@@ -33,29 +33,29 @@ def conduction_solving_step(
     T = T_0.copy()
     updated_T = T.copy()
 
-    for i in range(num_cells_x):
-        for j in range(num_cells_y):
+    for j in range(num_cells_y):
+        for i in range(num_cells_x):
             if i > 0:
-                dT_left = (T[i - 1, j] - T[i, j]) / (((1 / kappa[i, j]) + (1 / kappa[i - 1, j])) * dx ** 2)
+                dT_left = (T[j, i - 1] - T[j, i]) / (((1 / kappa[j, i]) + (1 / kappa[j, i - 1])) * dx ** 2)
             else:
                 dT_left = 0
 
             if j > 0:
-                dT_under = (T[i, j - 1] - T[i, j]) / (((1 / kappa[i, j]) + (1 / kappa[i, j - 1])) * dy ** 2)
+                dT_under = (T[j - 1, i] - T[j, i]) / (((1 / kappa[j, i]) + (1 / kappa[j - 1, i])) * dy ** 2)
             else:
                 dT_under = 0
 
             if i < num_cells_x - 1:
-                dT_right = (T[i + 1, j] - T[i, j]) / (((1 / kappa[i, j]) + (1 / kappa[i + 1, j])) * dx ** 2)
+                dT_right = (T[j, i + 1] - T[j, i]) / (((1 / kappa[j, i]) + (1 / kappa[j, i + 1])) * dx ** 2)
             else:
                 dT_right = 0
 
             if j < num_cells_y - 1:
-                dT_upper = (T[i, j + 1] - T[i, j]) / (((1 / kappa[i, j]) + (1 / kappa[i, j + 1])) * dy ** 2)
+                dT_upper = (T[j + 1, i] - T[j, i]) / (((1 / kappa[j, i]) + (1 / kappa[j + 1, i])) * dy ** 2)
             else:
                 dT_upper = 0
 
-            updated_T[i, j] = T[i, j] + (2 * dt / rho_c[i, j]) * (dT_left + dT_under + dT_right + dT_upper)
+            updated_T[j, i] = T[j, i] + (2 * dt / rho_c[j, i]) * (dT_left + dT_under + dT_right + dT_upper)
 
     return updated_T
 
@@ -88,36 +88,37 @@ def loop_building_conduction_sparse_matrix(
     A = lil_matrix((num_cells_x * num_cells_y, num_cells_x * num_cells_y))
 
     def index_2D_to_1D(i, j):
-        return i * num_cells_y + j
+        return j * num_cells_x + i
 
-    for i in range(num_cells_x):
-        for j in range(num_cells_y):
+    for j in range(num_cells_y):
+        for i in range(num_cells_x):
             if i > 0:
-                kappa_left = 1 / (((1 / kappa[i, j]) + (1 / kappa[i - 1, j])) * dx ** 2)
-                A[index_2D_to_1D(i, j), index_2D_to_1D(i - 1, j)] = (2 / (rho_c[i, j])) * kappa_left
+                kappa_left = 1 / (((1 / kappa[j, i]) + (1 / kappa[j, i - 1])) * dx ** 2)
+                A[index_2D_to_1D(i, j), index_2D_to_1D(i - 1, j)] = (2 / rho_c[j, i]) * kappa_left
             else:
                 kappa_left = 0
 
             if j > 0:
-                kappa_under = 1 / (((1 / kappa[i, j]) + (1 / kappa[i, j - 1])) * dy ** 2)
-                A[index_2D_to_1D(i, j), index_2D_to_1D(i, j - 1)] = (2 / (rho_c[i, j])) * kappa_under
+                kappa_under = 1 / (((1 / kappa[j, i]) + (1 / kappa[j - 1, i])) * dy ** 2)
+                A[index_2D_to_1D(i, j), index_2D_to_1D(i, j - 1)] = (2 / rho_c[j, i]) * kappa_under
             else:
                 kappa_under = 0
 
             if i < num_cells_x - 1:
-                kappa_right = 1 / (((1 / kappa[i, j]) + (1 / kappa[i + 1, j])) * dx ** 2)
-                A[index_2D_to_1D(i, j), index_2D_to_1D(i + 1, j)] = (2 / (rho_c[i, j])) * kappa_right
+                kappa_right = 1 / (((1 / kappa[j, i]) + (1 / kappa[j, i + 1])) * dx ** 2)
+                A[index_2D_to_1D(i, j), index_2D_to_1D(i + 1, j)] = (2 / rho_c[j, i]) * kappa_right
             else:
                 kappa_right = 0
 
             if j < num_cells_y - 1:
-                kappa_upper = 1 / (((1 / kappa[i, j]) + (1 / kappa[i, j + 1])) * dy ** 2)
-                A[index_2D_to_1D(i, j), index_2D_to_1D(i, j + 1)] = (2 / (rho_c[i, j])) * kappa_upper
+                kappa_upper = 1 / (((1 / kappa[j, i]) + (1 / kappa[j + 1, i])) * dy ** 2)
+                A[index_2D_to_1D(i, j), index_2D_to_1D(i, j + 1)] = (2 / rho_c[j, i]) * kappa_upper
             else:
                 kappa_upper = 0
 
-            A[index_2D_to_1D(i, j), index_2D_to_1D(i, j)] = -(2 / (rho_c[i, j])) * \
-                (kappa_left + kappa_under + kappa_right + kappa_upper)
+            A[index_2D_to_1D(i, j), index_2D_to_1D(i, j)] = -(2 / rho_c[j, i]) * (
+                kappa_left + kappa_under + kappa_right + kappa_upper
+            )
 
     return A.tocsr()
 
@@ -198,7 +199,7 @@ def transient_conduction(
     elif solver == "matrix_multiplication":
         A = loop_building_conduction_sparse_matrix(kappa, rho_c, num_cells_x, num_cells_y, dx, dy)
         for step in range(n_iterations):
-            T = conduction_solving_step_matrix(A, T_0, dt)
+            T = conduction_solving_step_matrix(A, T, dt)
             if step % save_every_steps == 0:
                 T_history.append(T.copy())
     else:
