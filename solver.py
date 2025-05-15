@@ -159,8 +159,8 @@ def transient_conduction(
     dt: float,
     solver: str,
     tot_time: float,
-    save_time: float
-) -> list[np.ndarray]:
+    save_every_steps: int
+) -> dict[float, np.ndarray]:
     """
     Simulates transient 2D heat conduction simulation using either element-wise or matrix-based solver.
 
@@ -178,30 +178,28 @@ def transient_conduction(
         dt (float): Time step size [s].
         solver (str): Solver type "element_wise" or "matrix_multiplication".
         tot_time (float): Total simulation time [s].
-        save_time (float): Results saving interval [s].
+        save_every_steps (int): saving interval [-].
 
     Returns:
-        List[np.ndarray]: List of 2D arrays representing temperature distributions at each saved time step.
-
-    Raises:
-        ValueError: If the provided solver string is not recognized.
+        Dict[float, np.ndarray]: Dictionary of 2D arrays representing temperature distributions at each saved time step.
     """
     n_iterations = int(tot_time / dt)
-    save_every_steps = int(save_time / dt)
     T = T_0.copy()
-    T_history: list[np.ndarray] = []
+    T_history: dict[float, np.ndarray] = {}
 
     if solver == "element_wise":
         for step in range(n_iterations):
             T = conduction_solving_step(kappa, rho_c, T, num_cells_x, num_cells_y, dx, dy, dt)
-            if step % save_every_steps == 0:
-                T_history.append(T.copy())
+            if (step + 1) % save_every_steps == 0:
+                current_time = (step + 1) * dt
+                T_history[current_time] = T.copy()
     elif solver == "matrix_multiplication":
         A = loop_building_conduction_sparse_matrix(kappa, rho_c, num_cells_x, num_cells_y, dx, dy)
         for step in range(n_iterations):
             T = conduction_solving_step_matrix(A, T, dt)
-            if step % save_every_steps == 0:
-                T_history.append(T.copy())
+            if (step + 1) % save_every_steps == 0:
+                current_time = (step + 1) * dt
+                T_history[current_time] = T.copy()
     else:
         raise ValueError(f'Unknown solver "{solver}". Use "element_wise" or "matrix_multiplication."')
 

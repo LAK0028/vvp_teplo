@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 
 
 class ReadInputData:
@@ -28,19 +29,45 @@ class ReadInputData:
 
 
 class Mesh:
-    def __init__(self, nx, ny, dx, dy):
-        self.nx = nx
-        self.ny = ny
+    def __init__(self, num_cells_x, num_cells_y, dx, dy):
+        self.num_cells_x = num_cells_x
+        self.num_cells_y = num_cells_y
         self.dx = dx
         self.dy = dy
 
-        self.a = nx * dx
-        self.b = ny * dy
+        self.a = num_cells_x * dx
+        self.b = num_cells_y * dy
 
-        self.x = np.linspace(dx / 2, self.a - dx / 2, nx)
-        self.y = np.linspace(dy / 2, self.b - dy / 2, ny)
+        self.x = np.linspace(0, self.a, num_cells_x + 1)
+        self.y = np.linspace(0, self.b, num_cells_y + 1)
 
         self.X, self.Y = np.meshgrid(self.x, self.y)
 
     def get_grid_points(self):
         return self.X, self.Y
+
+    def create_mesh_plot(self, matrix, title="title", bar_title="bar_title", min=None, max=None):
+        fig, ax = plt.subplots(figsize=(9, 8))
+        pc = ax.pcolormesh(self.X, self.Y, matrix, shading="flat",
+                           cmap="inferno", vmin=min, vmax=max)
+
+        ax.set_aspect('equal', adjustable='box')
+        ax.set_title(title)
+        ax.set_xlabel("X [m]")
+        ax.set_ylabel("Y [m]")
+
+        cbar = fig.colorbar(pc, ax=ax, orientation='horizontal', pad=0.1)
+        cbar.set_label(bar_title)
+
+        plt.tight_layout()
+        return fig
+
+    def show_result(self, matrix, title="title", bar_title="bar_title", min=None, max=None):
+        self.create_mesh_plot(matrix, title, bar_title, min, max)
+        plt.show()
+
+    def save_results(self, matrix, title="title", bar_title="bar_title",
+                     min=None, max=None, save_path="plot.png"):
+        fig = self.create_mesh_plot(matrix, title, bar_title, min, max)
+        fig.savefig(save_path, dpi=300)
+        plt.close(fig)
